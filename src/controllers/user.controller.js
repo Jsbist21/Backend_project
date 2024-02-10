@@ -7,8 +7,10 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
     const user = await User.findById(userId);
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
+
+    const accessToken = await user.generateAccessToken();
+
+    const refreshToken = await user.generateRefreshToken();
 
     user.refreshToken = refreshToken;
     await user.save({ validateBeforeSave: false });
@@ -104,7 +106,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
   const { email, username, password } = req.body;
 
-  if (!username || !email) {
+  if (!(username || email)) {
     throw new ApiError(400, "username or password is required");
   }
 
@@ -115,6 +117,7 @@ const loginUser = asyncHandler(async (req, res) => {
   if (!user) {
     throw new ApiError(404, "User does not exist");
   }
+
   const isPasswordValid = await user.isPasswordCorrect(password);
 
   if (!isPasswordValid) {
@@ -123,6 +126,8 @@ const loginUser = asyncHandler(async (req, res) => {
   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
     user._id
   );
+
+  console.log(` accessToken : ${accessToken}`);
 
   const loggedInUser = User.findById(user._id).select(
     "-password -refreshToken"
@@ -141,7 +146,10 @@ const loginUser = asyncHandler(async (req, res) => {
       new ApiResponse(
         200,
         {
-          user: loggedInUser,
+          user: {
+            _id: loggedInUser._id,
+            username: loggedInUser.username,
+          },
           accessToken,
           refreshToken,
         },
